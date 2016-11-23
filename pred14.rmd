@@ -1,0 +1,94 @@
+---
+title: Coursera Practical Machine Learning Prediction Project
+author: "by Vincent Kowalski"
+output:
+  html_document:
+    fig_height: 9
+    fig_width: 9
+---
+
+## Background  
+One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it.  
+
+In this project, we will use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants to predict the manner in which they did the exercise.  
+
+## Libraries
+
+```{r results='hide', message=FALSE, warning=FALSE}
+library(caret)
+library(rpart)
+library(rpart.plot)
+library(randomForest)
+```
+
+## Download data
+```{r, cache = T}
+trainUrl <-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testUrl <- "https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+trainFile <- "./data/pml-training.csv"
+testFile  <- "./data/pml-testing.csv"
+if (!file.exists("./data")) {
+  dir.create("./data")
+}
+if (!file.exists(trainFile)) {
+  download.file(trainUrl, destfile=trainFile, method="curl")
+}
+if (!file.exists(testFile)) {
+  download.file(testUrl, destfile=testFile, method="curl")
+}
+```  
+## Create training and test data sets
+After downloading the data from the data source, we can read the two csv files into two data frames.  
+```{r, cache = T}
+training_data <- read.csv("./data/pml-training.csv")
+testing_data <- read.csv("./data/pml-testing.csv")
+
+###Processing Data
+
+```{r}
+#Delete columns with NA 
+training_data <- training_data[, colSums(is.na(testing_data)) == 0]
+testing_data  <- testing_data[, colSums(is.na(testing_data)) == 0]
+
+#Filter data
+training_data  <- training_data[, -c(1:7)]
+testing_data   <- testing_data[, -c(1:7)]
+
+dim(training_data)
+dim(testing_data)
+```
+
+## Create Training and Testing data sets
+
+```{r}
+#Divide training_data to sub_training_data and sub_testing_data (75% and 25% resp.)
+part_ind           <- createDataPartition(y = training_data$classe, p = 0.75, list = FALSE,)
+sub_training_data  <- training_data[part_ind,]
+sub_testing_data   <- training_data[-part_ind,]
+```
+
+## Create Random Forest and Decision Tree models and do comparison
+
+```{r}
+#Random Forest Model
+rand_forest_model <- randomForest(classe ~. , data = sub_training_data, method = "class")
+pred_rand_forest  <- predict(rand_forest_model, sub_testing_data, type = "class")
+res_rand_forest    <- confusionMatrix(pred_rand_forest, sub_testing_data$classe)
+
+#Decision Tree Model
+dec_tree_model  <- rpart(classe ~ ., data = sub_training_data, method = "class")
+pred_dec_tree   <- predict(dec_tree_model, sub_testing_data, type = "class")
+res_rand_tree   <- confusionMatrix(pred_dec_tree, sub_testing_data$classe)
+ 
+prp(dec_tree_model)
+
+res_comp <- data.frame(res_rand_forest$overall, res_rand_tree$overall)
+res_comp
+```
+
+## Prediction
+```{r}
+#Predict outcome on the testing_data using random forest model
+final_pred <- predict(rand_forest_model, testing_data, type = "class")
+final_pred
+```
